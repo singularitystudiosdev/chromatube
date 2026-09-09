@@ -94,6 +94,9 @@ function wireAuthTabs() {
   qsa('.auth-tab').forEach((tab) => {
     tab.addEventListener('click', () => selectAuthTab(tab.getAttribute('data-tab')));
   });
+  qsa('.auth-switch-link').forEach((link) => {
+    link.addEventListener('click', () => selectAuthTab(link.getAttribute('data-tab')));
+  });
 }
 
 const AUTH_COPY = {
