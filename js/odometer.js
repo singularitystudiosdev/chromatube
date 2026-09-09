@@ -79,6 +79,12 @@ export class Odometer {
       }
     }
     this.root.replaceChildren(frag);
+    // Flush style for the fresh strips BEFORE _animate writes a transition
+    // target. A strip inserted and re-styled in the same frame has no computed
+    // "before" state, so the browser applies the transform with no transition
+    // and the digits snap instead of rolling — every character-count change
+    // went through this path (e.g. $12.40 -> $156.75 on the hero).
+    void this.root.offsetHeight;
   }
 
   /* Roll every digit strip CONTINUOUSLY to its target: no snap-to-zero.

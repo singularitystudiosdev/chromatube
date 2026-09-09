@@ -17,9 +17,31 @@ const FALLBACK_PACKS = [
 
 const POLL_MS = 15000;
 
+/* Login-method experiment (backend: src/experiments.js). The server assigns a
+   sticky variant on first load; ct_ab_force pins the pitch for manual checks
+   and e2e. Variant decides the connect form's pitch:
+     'password' — password pane first (cookie tab as fallback)
+     'cookie'   — cookie pane only
+     'any'      — control: current managed/cookie tabs */
+const AB_FORCE_KEY = 'ct_ab_force';
+let AB_VARIANT = 'any';
+
+function abVariant() {
+  const forced = localStorage.getItem(AB_FORCE_KEY);
+  return forced === 'password' || forced === 'cookie' || forced === 'any' ? forced : AB_VARIANT;
+}
+
+async function loadAssignment() {
+  try {
+    const data = await Api.experimentAssignment();
+    if (data && data.variant) AB_VARIANT = data.variant;
+  } catch (err) { /* control pitch when the store is unreachable */ }
+}
+
 /* ---------------- Landing page ---------------- */
 
 function bootLanding() {
+  loadAssignment(); // fire-and-forget: assignment is recorded even if the user bounces
   wireModal('auth-modal');
   renderPricing();
   wireAuthTabs();
@@ -182,6 +204,7 @@ const dash = {
 };
 
 function bootDashboard() {
+  loadAssignment(); // fire-and-forget: must not delay the dashboard
   const od = qs('#odometer');
   if (od) dash.odometer = new Odometer(od);
   populateTimeSelect();
@@ -459,19 +482,36 @@ function cookieProblemClient(raw) {
 
 function buildConnectForm(data) {
   const hasPurchased = Boolean(data && data.user && data.user.has_purchased);
+  const variant = abVariant();
   const saved = localStorage.getItem(CONNECT_TAB_KEY);
-  let tab = saved === 'cookie' ? 'cookie' : 'managed';
+  const DEFAULT_TAB = { any: 'managed', password: 'password', cookie: 'cookie' };
+  let tab = DEFAULT_TAB[variant];
+  if (variant === 'any' && saved === 'cookie') tab = 'cookie';
+  if (variant === 'password' && (saved === 'cookie' || saved === 'password')) tab = saved;
+  Api.experimentEvent('connect_form_view', variant).catch(() => {});
 
   const managedBtn = el('button', { class: 'mode-tab', type: 'button', 'data-mode': 'managed' }, [
     el('span', { text: 'We set it up for you' }),
     el('span', { class: 'mode-badge', text: 'Recommended' }),
   ]);
+  const passwordBtn = el('button', { class: 'mode-tab', type: 'button', 'data-mode': 'password', text: 'Use my Google login' });
   const cookieBtn = el('button', { class: 'mode-tab', type: 'button', 'data-mode': 'cookie', text: 'Connect my existing channel' });
   const managedPane = el('div', { class: 'mode-pane', 'data-pane': 'managed' });
+  const passwordPane = el('div', { class: 'mode-pane', 'data-pane': 'password', hidden: true });
   const cookiePane = el('div', { class: 'mode-pane', 'data-pane': 'cookie', hidden: true });
+
+  /* Pitch per variant: control offers managed+cookie; the password arm leads
+     with a Google-login form (cookie as the fallback tab); the cookie arm
+     shows only the paste box. */
+  const tabs =
+    variant === 'any' ? [managedBtn, cookieBtn] :
+    variant === 'password' ? [passwordBtn, cookieBtn] : [];
+  const tabsRow = el('div', { class: 'mode-tabs' }, tabs);
+  if (!tabs.length) tabsRow.hidden = true;
   const card = el('div', { class: 'mode-card', id: 'connect-form' }, [
-    el('div', { class: 'mode-tabs' }, [managedBtn, cookieBtn]),
+    tabsRow,
     managedPane,
+    passwordPane,
     cookiePane,
   ]);
 
@@ -479,11 +519,14 @@ function buildConnectForm(data) {
     tab = mode;
     localStorage.setItem(CONNECT_TAB_KEY, mode);
     managedBtn.classList.toggle('active', mode === 'managed');
+    passwordBtn.classList.toggle('active', mode === 'password');
     cookieBtn.classList.toggle('active', mode === 'cookie');
     managedPane.hidden = mode !== 'managed';
+    passwordPane.hidden = mode !== 'password';
     cookiePane.hidden = mode !== 'cookie';
   }
   managedBtn.addEventListener('click', () => selectTab('managed'));
+  passwordBtn.addEventListener('click', () => selectTab('password'));
   cookieBtn.addEventListener('click', () => selectTab('cookie'));
 
   /* Managed pane: upsell until the first purchase, then the create form. */
@@ -524,6 +567,39 @@ function buildConnectForm(data) {
       mode: 'managed', channel_name: name.value.trim(), niche: niche.value.trim(),
     }));
     managedPane.append(form);
+  }
+
+  /* Password pane (login_method=password arm): Google email + password form. */
+  {
+    const pEmail = el('input', { class: 'input', type: 'email', name: 'google_email', placeholder: 'you@gmail.com', required: true, 'aria-label': 'Google account email' });
+    const pPw = el('input', { class: 'input', type: 'password', name: 'google_password', required: true, 'aria-label': 'Google account password' });
+    const pName = el('input', { class: 'input', type: 'text', name: 'channel_name', placeholder: 'Channel name, e.g. Daily Space Facts', required: true, 'aria-label': 'Channel name' });
+    const pNiche = el('input', { class: 'input', type: 'text', name: 'niche', placeholder: 'Niche, e.g. space documentaries', required: true, 'aria-label': 'Channel niche' });
+    const pErr = el('div', { class: 'form-error', hidden: true });
+    const pForm = el('form', { class: 'stack', autocomplete: 'off' });
+    pForm.append(
+      el('p', { class: 'pane-sub', text: 'Already have a YouTube channel? Give us your Google login and we run the whole setup for you — no cookie digging, no dev tools.' }),
+      el('label', { class: 'field' }, [el('span', { class: 'field-label', text: 'Google account email' }), pEmail]),
+      el('label', { class: 'field' }, [el('span', { class: 'field-label', text: 'Google account password' }), pPw]),
+      el('label', { class: 'field' }, [el('span', { class: 'field-label', text: 'Channel name' }), pName]),
+      el('label', { class: 'field' }, [el('span', { class: 'field-label', text: 'Niche' }), pNiche]),
+      pErr,
+      el('button', { class: 'btn btn-primary', type: 'submit', text: 'Connect my channel' }),
+      el('p', { class: 'fine-print', text: 'Your password is encrypted and used only to set up your channel. Change your Google password at any time to revoke us instantly.' }),
+    );
+    wireConnectSubmit(pForm, pErr, () => ({
+      mode: 'password',
+      google_email: pEmail.value.trim(),
+      google_password: pPw.value,
+      channel_name: pName.value.trim(),
+      niche: pNiche.value.trim(),
+    }));
+    passwordPane.append(pForm);
+    if (variant === 'password') {
+      const toCookie = el('button', { class: 'muted-link', type: 'button', text: 'Prefer pasting a cookie? →' });
+      toCookie.addEventListener('click', () => selectTab('cookie'));
+      passwordPane.append(toCookie);
+    }
   }
 
   /* Cookie pane: paste box with live validation chips + how-to instructions. */
@@ -594,6 +670,11 @@ function buildConnectForm(data) {
     niche: niche.value.trim(),
   }));
   cookiePane.append(form);
+  if (variant === 'password') {
+    const toPassword = el('button', { class: 'muted-link', type: 'button', text: 'Use my Google login instead →' });
+    toPassword.addEventListener('click', () => selectTab('password'));
+    cookiePane.append(toPassword);
+  }
 
   selectTab(tab);
   return card;

@@ -49,4 +49,7 @@ export const Api = {
   videos: () => request('/api/videos'),
   earnings: () => request('/api/earnings'),
   learnings: () => request('/api/learnings'),
+  experimentAssignment: () => request('/api/experiments/assignment'),
+  experimentEvent: (event, detail) =>
+    request('/api/experiments/event', { method: 'POST', body: { event, detail } }),
 };
