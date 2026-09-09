@@ -160,11 +160,78 @@ async function renderPricing() {
       el('div', { class: 'pack-credits', text: `${pack.credits} credits = ${pack.credits} videos` }),
       el('div', { class: 'pack-price', text: money(pack.price_cents) }),
       perVideo ? el('div', { class: 'pack-per-video', text: `${money(perVideo)} per finished, uploaded video` }) : null,
-      el('button', { class: 'btn btn-primary', type: 'button', text: 'Buy credits', onclick: () => buyFromLanding(pack) }),
+      el('button', { class: 'btn btn-primary', type: 'button', text: 'Buy with card', onclick: () => buyFromLanding(pack) }),
+      el('div', { class: 'paypal-slot', id: `paypal-slot-${pack.id}`, 'data-pack-id': pack.id }),
     ].filter(Boolean)));
   }
+  mountPayPalButtons(packs);
   if (usedFallback) {
     grid.appendChild(el('p', { class: 'pricing-note', text: 'Showing standard packs. Live pricing will load when the store is reachable.' }));
+  }
+}
+
+/* ---------------- PayPal ---------------- */
+
+let payPalSdkPromise = null;
+let payPalSdkReady = null;
+
+async function loadPayPalSdk(clientId) {
+  if (!payPalSdkPromise) {
+    payPalSdkPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=CAPTURE`;
+      s.onload = () => { payPalSdkReady = window.paypal; resolve(window.paypal); };
+      s.onerror = () => reject(new Error('PayPal SDK failed to load.'));
+      document.head.appendChild(s);
+    });
+  }
+  return payPalSdkPromise;
+}
+
+async function mountPayPalButtons(packs) {
+  try {
+    const cfg = await Api.paypalConfig();
+    if (!cfg || !cfg.enabled || !cfg.client_id || !packs || !packs.length) return;
+    const paypal = await loadPayPalSdk(cfg.client_id);
+    if (!paypal || !paypal.Buttons) return;
+    for (const pack of packs) {
+      const slot = document.getElementById(`paypal-slot-${pack.id}`);
+      if (!slot || slot.childElementCount > 0) continue;
+      paypal.Buttons({
+        style: { layout: 'horizontal', height: 40, label: 'paypal' },
+        createOrder: async () => {
+          const data = await Api.paypalOrder(pack.id);
+          if (!data || !data.order_id) throw new ApiError('PayPal did not return an order.', 502);
+          return data.order_id;
+        },
+        onApprove: async (approved) => {
+          const data = await Api.paypalCapture(appendedOrder(approved));
+          handlePaypalResult(data, pack);
+        },
+        onError: (err) => {
+          console.error('PayPal button error:', err);
+          toast('PayPal checkout failed. Try again or pay with card.', 'error');
+        },
+      }).render(slot);
+    }
+  } catch (err) {
+    // Unconfigured or unreachable PayPal must never break the page or the
+    // card flow — stay quiet at info level.
+    console.info('PayPal buttons not mounted:', err && err.message ? err.message : err);
+  }
+}
+
+// The SDK hands back { orderID } (capital ID); accept both spellings.
+function appendedOrder(approved) {
+  return (approved && (approved.orderID || approved.order_id)) || '';
+}
+
+async function handlePaypalResult(data, pack) {
+  if (data && (data.granted || data.reason === 'already_granted' || data.reason === 'duplicate_capture')) {
+    toast(`Paid with PayPal. ${pack.credits} credits added.`, 'success');
+    try { await loadMe(); } catch (_e) { /* landing page has no dashboard */ }
+  } else {
+    toast('PayPal payment captured but credits are not confirmed yet.', 'error');
   }
 }
 
@@ -821,9 +888,11 @@ function renderPacks() {
       el('div', { class: 'pack-name', text: pack.name || pack.id }),
       el('div', { class: 'pack-credits', text: `${pack.credits} credits` }),
       el('div', { class: 'pack-price', text: money(pack.price_cents) }),
-      el('button', { class: 'btn btn-primary', type: 'button', text: 'Buy', onclick: () => buyPack(pack.id) }),
+      el('button', { class: 'btn btn-primary', type: 'button', text: 'Buy with card', onclick: () => buyPack(pack.id) }),
+      el('div', { class: 'paypal-slot', id: `paypal-slot-${pack.id}`, 'data-pack-id': pack.id }),
     ]));
   }
+  mountPayPalButtons(dash.packs);
 }
 
 async function buyPack(packId) {

@@ -40,6 +40,9 @@ export const Api = {
   me: () => request('/api/me'),
   catalog: () => request('/api/catalog'),
   checkout: (pack_id) => request('/api/checkout', { method: 'POST', body: { pack_id } }),
+  paypalConfig: () => request('/api/paypal/config'),
+  paypalOrder: (pack_id) => request('/api/paypal/order', { method: 'POST', body: { pack_id } }),
+  paypalCapture: (order_id) => request('/api/paypal/capture', { method: 'POST', body: { order_id } }),
   connectChannel: (payload) =>
     request('/api/channel/connect', { method: 'POST', body: payload }),
   channelCredentials: () => request('/api/channel/credentials'),
