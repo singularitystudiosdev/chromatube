@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>window.CHROMATUBE_OFFICIAL='https://models-societies-fabulous-gain.trycloudflare.com';</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChromaTube. Your YouTube channel, running itself.</title>
+  <meta name="description" content="ChromaTube sets up a YouTube channel for you, generates videos from your idea on a schedule, uploads them, and shows your estimated earnings live.">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff0033'/%3E%3Cstop offset='0.5' stop-color='%23ffd400'/%3E%3Cstop offset='1' stop-color='%232979ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M6 3.5v17l14.5-8.5z' fill='url(%23g)'/%3E%3C/svg%3E">
+</head>
+<body data-page="landing">
+
+  <header class="masthead">
+    <a class="brand" href="" aria-label="ChromaTube home">
+      <span class="logo" aria-hidden="true"><svg class="logo-mark" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><defs><linearGradient id="rg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff0033"/><stop offset="0.25" stop-color="#ff8a00"/><stop offset="0.5" stop-color="#ffd400"/><stop offset="0.75" stop-color="#00c853"/><stop offset="1" stop-color="#2979ff"/></linearGradient></defs><path class="logo-tri" d="M6 3.5v17l14.5-8.5z" fill="url(#rg1)"/></svg></span>
+      <span class="wordmark"><span class="word-chroma">Chroma</span><span class="word-tube">Tube</span></span>
+    </a>
+    <nav class="mast-nav" aria-label="Page">
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="mast-actions">
+      <button class="btn btn-ghost" type="button" data-open-auth="login">Log in</button>
+      <button class="btn btn-primary" type="button" data-open-auth="signup">Sign up</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Your YouTube channel, running&nbsp;itself.</h1>
+      <p class="hero-sub">Type a video idea. Pick how often to post. We set up the channel, make the videos, upload them, and you watch the money tick up.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary btn-lg" type="button" data-open-auth="signup">Start earning</button>
+        <button class="btn btn-outline btn-lg" type="button" data-scroll-how>See how it works</button>
+      </div>
+      <div class="hero-demo" aria-hidden="true">
+        <div class="hero-odometer-demo">
+          <div class="odometer od-sm" id="hero-odometer"></div>
+          <span class="hero-demo-cap">estimated so far, one upload at a time</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Give us the idea</h3>
+          <p>One sentence is enough. "Short videos explaining weather phenomena" is a real niche and a real schedule.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>We build the channel and the schedule</h3>
+          <p>We set up your YouTube channel and put it on a release cadence you chose. Daily, every 2 days, weekly, or every 2 weeks, at a time you pick.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Videos go up. The dashboard fills.</h3>
+          <p>Each scheduled slot produces a video and uploads it. Views and estimated earnings land on your dashboard, updating every 15 seconds.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="section">
+      <h2>Credit packs</h2>
+      <p class="section-sub">One credit buys one finished, uploaded video. Packs from $0.66 per video.</p>
+      <div id="pricing-grid" class="packs"></div>
+    </section>
+
+    <section id="learn" class="section section-learn">
+      <h2>It learns</h2>
+      <p class="section-sub">Every video is an experiment.</p>
+      <div class="learn-grid">
+        <div class="learn-card">
+          <h3>A/B testing by default</h3>
+          <p>Videos ship with variant tags, so titles, hooks and lengths are tested against each other on real channels.</p>
+        </div>
+        <div class="learn-card">
+          <h3>Outliers get studied</h3>
+          <p>When one video pulls far more views than the others, we record what was different about it.</p>
+        </div>
+        <div class="learn-card">
+          <h3>Everyone benefits</h3>
+          <p>Findings go into a shared learning feed. Your next scheduled video uses everything the engine has learned so far, from every channel.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <h2>FAQ</h2>
+      <div class="faq">
+        <details>
+          <summary>Is this allowed?</summary>
+          <p>Yes. The channel is yours, the videos are real uploads, and YouTube's own rules decide monetization. Your channel has to meet YouTube's requirements (subscriber count, watch hours, and policy compliance) before it earns. We do the publishing work. We do not fake views or engagement, because that gets channels removed.</p>
+        </details>
+        <details>
+          <summary>Do you need my password?</summary>
+          <p>The connect form asks for your Google account email and password because channel setup signs in on your behalf to create and configure the channel. You can revoke that access at any time by changing your password or removing app access in your Google account settings, and we stop immediately.</p>
+        </details>
+        <details>
+          <summary>What do credits pay for?</summary>
+          <p>Video generation and uploads. Each pack lists its credit amount. When your balance runs low, scheduled releases pause until you top up.</p>
+        </details>
+        <details>
+          <summary>Are the earnings on the dashboard exact?</summary>
+          <p>No. They are estimates based on views and typical revenue per thousand views. YouTube reports final numbers in AdSense on its own schedule, usually monthly.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span class="wordmark wordmark-sm"><span class="word-chroma">Chroma</span><span class="word-tube">Tube</span></span>
+      <span>Your channel. Our engine. Your schedule.</span>
+      <span class="footer-muted">Estimated earnings are not a guarantee of YouTube revenue.</span>
+    </div>
+  </footer>
+
+  <!-- Auth modal -->
+  <div class="modal" id="auth-modal" role="dialog" aria-modal="true" aria-label="Log in or sign up">
+    <div class="modal-card">
+      <button class="modal-x" type="button" data-close-modal aria-label="Close">&times;</button>
+      <div class="auth-tabs" role="tablist">
+        <button class="auth-tab active" type="button" data-tab="signup" role="tab">Sign up</button>
+        <button class="auth-tab" type="button" data-tab="login" role="tab">Log in</button>
+      </div>
+
+      <form class="auth-pane" id="signup-form" data-pane="signup">
+        <label class="field">
+          <span class="field-label">Email</span>
+          <input class="input" type="email" id="signup-email" name="email" autocomplete="email" required>
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input class="input" type="password" id="signup-password" name="password" autocomplete="new-password" required minlength="8">
+        </label>
+        <div class="form-error" id="signup-error" hidden></div>
+        <button class="btn btn-primary btn-block" type="submit">Create account</button>
+      </form>
+
+      <form class="auth-pane" id="login-form" data-pane="login" hidden>
+        <label class="field">
+          <span class="field-label">Email</span>
+          <input class="input" type="email" id="login-email" name="email" autocomplete="email" required>
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input class="input" type="password" id="login-password" name="password" autocomplete="current-password" required>
+        </label>
+        <div class="form-error" id="login-error" hidden></div>
+        <button class="btn btn-primary btn-block" type="submit">Log in</button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
