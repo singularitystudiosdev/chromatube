@@ -41,6 +41,11 @@ export class Odometer {
 
   /* Rebuild the DOM. New leading digits start parked at 0 so they roll up. */
   _build(chars) {
+    // Drop the old layout's safety timers with it — they would otherwise fire
+    // against strips that no longer exist.
+    for (const part of this.parts) {
+      if (part.pendingTimer) { clearTimeout(part.pendingTimer); part.pendingTimer = null; }
+    }
     const frag = document.createDocumentFragment();
     const dollar = document.createElement('span');
     dollar.className = 'od-dollar';
@@ -128,9 +133,7 @@ export class Odometer {
     }
   }
 
-  destroy() {
-    for (const part of this.parts) {
-      if (part.pendingTimer) { clearTimeout(part.pendingTimer); part.pendingTimer = null; }
-    }
-  }
+  /* No destroy(): the odometer lives for the whole page (one dashboard mount,
+     never re-initialized), so timers die with the document. _build clears a
+     replaced layout's timers, which is the only teardown that can happen. */
 }
