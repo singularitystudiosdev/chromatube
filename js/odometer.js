@@ -23,7 +23,6 @@ export class Odometer {
     this.root.setAttribute('aria-live', 'polite');
     this.parts = [];   // {el, isDigit, digit, loop} in render order
     this.lastChars = null;
-    this._raf = null;
   }
 
   setCents(cents) {
@@ -82,7 +81,6 @@ export class Odometer {
      to the new one, and after an upward roll we silently re-park inside the
      middle loop so there is always runway left. */
   _animate(chars) {
-    if (this._raf) cancelAnimationFrame(this._raf);
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     for (let p = 0; p < this.parts.length; p++) {
@@ -93,6 +91,8 @@ export class Odometer {
       if (target === part.digit) continue;
 
       if (reduce) {
+        if (part.pendingTimer) { clearTimeout(part.pendingTimer); part.pendingTimer = null; }
+        part.rollId = (part.rollId || 0) + 1; // orphan any in-flight animated roll
         part.strip.style.transition = 'none';
         part.strip.style.transform = `translateY(-${MIDDLE + target}em)`;
         part.digit = target;
@@ -105,23 +105,32 @@ export class Odometer {
       const crossing = part.digit === 9 && target === 0;
       const dest = MIDDLE + target + (crossing ? LOOP : 0);
 
+      // Invalidate any roll still in flight so its re-park can't fire late
+      // and snap the strip back to a stale digit.
+      if (part.pendingTimer) { clearTimeout(part.pendingTimer); part.pendingTimer = null; }
+      part.rollId = (part.rollId || 0) + 1;
+      const rollId = part.rollId;
+
       part.strip.style.transition = `transform ${DURATION}ms ${EASE}`;
       part.strip.style.transform = `translateY(-${dest}em)`;
 
       const strip = part.strip;
       const after = () => {
+        if (part.rollId !== rollId) return; // a newer roll owns the strip now
         strip.style.transition = 'none';
         // Re-park into the middle loop so future rolls always have runway.
         strip.style.transform = `translateY(-${MIDDLE + target}em)`;
       };
       strip.addEventListener('transitionend', after, { once: true });
       // Safety: if transitionend is missed (tab hidden), re-park later anyway.
-      setTimeout(after, DURATION + 200);
+      part.pendingTimer = setTimeout(after, DURATION + 200);
       part.digit = target;
     }
   }
 
   destroy() {
-    if (this._raf) cancelAnimationFrame(this._raf);
+    for (const part of this.parts) {
+      if (part.pendingTimer) { clearTimeout(part.pendingTimer); part.pendingTimer = null; }
+    }
   }
 }
