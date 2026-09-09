@@ -46,6 +46,7 @@ function bootLanding() {
   renderPricing();
   wireAuthTabs();
   wireAuthForms();
+  wirePasswordToggles();
   wireLandingNav();
   wireHeroOdometer();
 }
@@ -95,9 +96,72 @@ function wireAuthTabs() {
   });
 }
 
+const AUTH_COPY = {
+  signup: {
+    title: 'Create your account',
+    sub: 'Type a video idea, pick a schedule — ChromaTube runs the rest.',
+    other: 'login',
+    switchText: 'Already have an account?',
+    switchLabel: 'Log in',
+  },
+  login: {
+    title: 'Welcome back',
+    sub: 'Log in to your channel, your schedule and your credits.',
+    other: 'signup',
+    switchText: 'New here?',
+    switchLabel: 'Create an account',
+  },
+};
+
 function selectAuthTab(name) {
+  const copy = AUTH_COPY[name] || AUTH_COPY.signup;
+  const title = qs('#auth-title');
+  const sub = qs('#auth-sub');
+  if (title) title.textContent = copy.title;
+  if (sub) sub.textContent = copy.sub;
   qsa('.auth-tab').forEach((t) => t.classList.toggle('active', t.getAttribute('data-tab') === name));
+  // The footer link always offers the OTHER pane, ChatGPT/Claude style.
+  qsa('.auth-switch-text').forEach((s) => { s.textContent = copy.switchText; });
+  qsa('.auth-switch-link').forEach((l) => {
+    l.setAttribute('data-tab', copy.other);
+    l.textContent = copy.switchLabel;
+  });
   qsa('.auth-pane').forEach((p) => { p.hidden = p.getAttribute('data-pane') !== name; });
+}
+
+/* Show/Hide for password fields. Visible text + aria-pressed per the
+   accessible show-password pattern; refocus the field so typing continues. */
+function wirePasswordToggles() {
+  qsa('.pwd-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = btn.parentElement && btn.parentElement.querySelector('input');
+      if (!input) return;
+      const showing = input.type === 'password';
+      input.type = showing ? 'text' : 'password';
+      btn.textContent = showing ? 'Hide' : 'Show';
+      btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
+      btn.setAttribute('aria-label', showing ? 'Hide password' : 'Show password');
+      input.focus({ preventScroll: true });
+    });
+  });
+}
+
+/* No session (or an ended one): open the auth card in place instead of
+   bouncing to the landing page. Context banner explains WHY:
+   ?credits=0 is the PayPal cancel_url (src/routes/checkout.js). */
+function showAuthGate() {
+  if (dash.authGateShown) return;
+  dash.authGateShown = true;
+  const params = new URLSearchParams(window.location.search);
+  const banner = qs('#auth-banner');
+  if (banner) {
+    banner.hidden = false;
+    banner.textContent = params.get('credits') === '0'
+      ? 'Your checkout was cancelled and you have not been charged. Log in or sign up to finish buying credits.'
+      : 'Your session has ended. Log in to get back to your dashboard.';
+  }
+  selectAuthTab('login');
+  openModal('auth-modal');
 }
 
 function wireAuthForms() {
@@ -108,17 +172,22 @@ function wireAuthForms() {
     e.preventDefault();
     setError(qs('#signup-error'), null);
     const btn = signupForm.querySelector('button[type=submit]');
+    const original = btn.textContent;
     btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.textContent = 'Creating your account…';
     try {
       const email = qs('#signup-email').value.trim();
       const password = qs('#signup-password').value;
       if (!email || !password) throw new ApiError('Enter an email and a password.', 400);
       await Api.signup(email, password);
       try { await Api.login(email, password); } catch (err) { /* session may already be set by signup */ }
-      window.location.href = '/app.html';
+      window.location.href = '/app.html' + window.location.search;
     } catch (err) {
       setError(qs('#signup-error'), err.message || 'Sign up failed. Try again.');
       btn.disabled = false;
+      btn.classList.remove('is-loading');
+      btn.textContent = original;
     }
   });
 
@@ -126,16 +195,26 @@ function wireAuthForms() {
     e.preventDefault();
     setError(qs('#login-error'), null);
     const btn = loginForm.querySelector('button[type=submit]');
+    const original = btn.textContent;
     btn.disabled = true;
+    btn.classList.add('is-loading');
+    btn.textContent = 'Logging in…';
     try {
       const email = qs('#login-email').value.trim();
       const password = qs('#login-password').value;
       if (!email || !password) throw new ApiError('Enter an email and a password.', 400);
       await Api.login(email, password);
-      window.location.href = '/app.html';
+      window.location.href = '/app.html' + window.location.search;
     } catch (err) {
-      setError(qs('#login-error'), err.message || 'Log in failed. Try again.');
+      setError(
+        qs('#login-error'),
+        err.status === 401
+          ? 'That email and password do not match. Try again, or switch to Sign up to create an account.'
+          : (err.message || 'Log in failed. Try again.')
+      );
       btn.disabled = false;
+      btn.classList.remove('is-loading');
+      btn.textContent = original;
     }
   });
 }
@@ -276,6 +355,11 @@ function bootDashboard() {
   if (od) dash.odometer = new Odometer(od);
   populateTimeSelect();
   wireSidebar();
+  // Auth card (used when the session is missing or has expired).
+  wireModal('auth-modal');
+  wireAuthTabs();
+  wireAuthForms();
+  wirePasswordToggles();
   // NOTE: the connect form is built and self-wired by buildConnectForm()
   // when the channel state renders (no static form in app.html).
   wireScheduleForm();
@@ -351,8 +435,13 @@ async function loadMe() {
   try {
     data = await Api.me();
   } catch (err) {
-    if (err.status === 401) { window.location.href = '/'; return; }
+    if (err.status === 401) { showAuthGate(); return; }
     throw err;
+  }
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('credits') === '0' && !dash.cancelToastShown) {
+    dash.cancelToastShown = true;
+    toast('Checkout cancelled. You have not been charged — you can buy credits anytime.', 'info', 8000);
   }
   dash.me = data;
   renderUser(data);
